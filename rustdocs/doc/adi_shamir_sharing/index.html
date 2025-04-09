@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Shamir’s Secret Sharing Implementation in Rust"><title>adi_shamir_sharing - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="adi_shamir_sharing" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.1 (4eb161250 2025-03-15)" data-channel="1.85.1" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../static.files/storage-59e33391.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../adi_shamir_sharing/index.html">adi_<wbr>shamir_<wbr>sharing</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#shamirs-secret-sharing-implementation-in-rust" title="Shamir’s Secret Sharing Implementation in Rust">Shamir’s Secret Sharing Implementation in Rust</a><ul><li><a href="#how-it-works" title="How It Works">How It Works</a></li><li><a href="#security" title="Security">Security</a></li><li><a href="#potential-vulnerabilities" title="Potential Vulnerabilities">Potential Vulnerabilities</a></li></ul></li></ul><h3><a href="#structs">Crate Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <span>adi_shamir_sharing</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/adi_shamir_sharing/lib.rs.html#1-188">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="shamirs-secret-sharing-implementation-in-rust"><a class="doc-anchor" href="#shamirs-secret-sharing-implementation-in-rust">§</a>Shamir’s Secret Sharing Implementation in Rust</h2>
+<p>This crate provides an implementation of Shamir’s Secret Sharing algorithm over a finite field.
+It splits a secret into multiple shares using a random polynomial and can reconstruct the secret
+from a subset of those shares using Lagrange interpolation.</p>
+<p>The implementation uses the prime modulus defined by the secp256k1 curve:
+( p = 2^{256} - 2^{32} - 977 ).</p>
+<h3 id="how-it-works"><a class="doc-anchor" href="#how-it-works">§</a>How It Works</h3>
+<ol>
+<li>
+<p><strong>Field Selection:</strong><br />
+A prime ( p ) is chosen to define the finite field over which all computations occur.</p>
+</li>
+<li>
+<p><strong>Polynomial Construction:</strong><br />
+A random polynomial ( f(x) = a_0 + a_1 x + a_2 x^2 + \dots + a_{k-1} x^{k-1} ) is generated,
+where ( a_0 ) is the secret and the other coefficients ( a_i ) are generated randomly.</p>
+</li>
+<li>
+<p><strong>Share Generation:</strong><br />
+The polynomial is evaluated at ( n ) distinct nonzero x-values to yield shares ( (x_i, f(x_i)) ).</p>
+</li>
+<li>
+<p><strong>Secret Reconstruction:</strong><br />
+Given at least ( k ) shares, Lagrange interpolation is used to reconstruct ( f(0) ), which is the secret.</p>
+</li>
+</ol>
+<h3 id="security"><a class="doc-anchor" href="#security">§</a>Security</h3>
+<p>Shamir’s Secret Sharing is information-theoretically secure. Any set of fewer than ( k ) shares
+yields no information about the secret due to the randomness of the polynomial coefficients.</p>
+<p><strong>Important considerations:</strong></p>
+<ul>
+<li><strong>Randomness:</strong> The security relies on using a cryptographically secure random number generator for
+coefficient generation.</li>
+<li><strong>Parameter Selection:</strong> The secret must be less than ( p ), and the threshold ( k ) should be chosen
+according to the desired security policy.</li>
+</ul>
+<h3 id="potential-vulnerabilities"><a class="doc-anchor" href="#potential-vulnerabilities">§</a>Potential Vulnerabilities</h3>
+<ul>
+<li>
+<p><strong>Weak Randomness:</strong> If the random number generator is compromised or not cryptographically secure,
+an attacker may recover the random coefficients and, therefore, the secret.</p>
+</li>
+<li>
+<p><strong>Side Channel Attacks:</strong> As with many cryptographic algorithms, careful attention must be paid to avoid
+side channel leaks (timing, power, etc.), especially in a constrained or adversarial environment.</p>
+</li>
+<li>
+<p><strong>Misconfiguration:</strong> Incorrect parameters (e.g., secret larger than ( p ) or an invalid threshold)
+can cause the scheme to fail or reduce security.</p>
+</li>
+</ul>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Share.html" title="struct adi_shamir_sharing::Share">Share</a></div><div class="desc docblock-short">Represents a single share in Shamir’s Secret Sharing.</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.evaluate_polynomial.html" title="fn adi_shamir_sharing::evaluate_polynomial">evaluate_<wbr>polynomial</a></div><div class="desc docblock-short">Evaluates a polynomial at a given point ( x ) modulo ( p ).</div></li><li><div class="item-name"><a class="fn" href="fn.get_prime.html" title="fn adi_shamir_sharing::get_prime">get_<wbr>prime</a></div><div class="desc docblock-short">Returns the prime modulus ( p = 2^{256} - 2^{32} - 977 ).</div></li><li><div class="item-name"><a class="fn" href="fn.modinv.html" title="fn adi_shamir_sharing::modinv">modinv</a></div><div class="desc docblock-short">Computes the modular inverse of <code>a</code> modulo <code>p</code> using Fermat’s Little Theorem.</div></li><li><div class="item-name"><a class="fn" href="fn.reconstruct_secret.html" title="fn adi_shamir_sharing::reconstruct_secret">reconstruct_<wbr>secret</a></div><div class="desc docblock-short">Reconstructs the secret from a given set of shares using Lagrange interpolation.</div></li><li><div class="item-name"><a class="fn" href="fn.split_secret.html" title="fn adi_shamir_sharing::split_secret">split_<wbr>secret</a></div><div class="desc docblock-short">Splits a secret into a specified number of shares with a reconstruction threshold.</div></li></ul></section></div></main></body></html>
