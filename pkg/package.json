@@ -1,0 +1,15 @@
+{
+  "name": "adi-shamir-sharing",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "adi_shamir_sharing_bg.wasm",
+    "adi_shamir_sharing.js",
+    "adi_shamir_sharing.d.ts"
+  ],
+  "main": "adi_shamir_sharing.js",
+  "types": "adi_shamir_sharing.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
