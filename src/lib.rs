@@ -186,3 +186,97 @@ pub fn reconstruct_secret(shares: &[Share], p: &BigUint) -> BigUint {
     }
     secret
 }
+
+// The following module adds WebAssembly bindings for TypeScript using wasm-bindgen.
+// It exports functions to split a secret key into 4 shares and to reconstruct the key from those shares.
+
+#[cfg(target_arch = "wasm32")]
+mod wasm_bindings {
+    use super::*;
+    use wasm_bindgen::prelude::*;
+    use serde::{Serialize, Deserialize};
+
+    /// A share structure for TypeScript binding.
+    /// The x and y coordinates are represented as hexadecimal strings.
+    #[derive(Serialize, Deserialize)]
+    pub struct TSShare {
+        pub x: String,
+        pub y: String,
+    }
+
+    /// Splits a secret key into 4 parts.
+    ///
+    /// This function expects the secret as a hexadecimal string, and returns a JsValue
+    /// representing an array of TSShare objects. It uses a fixed threshold and share count of 4,
+    /// meaning that all 4 shares are required to reconstruct the key.
+    ///
+    /// # Arguments
+    ///
+    /// * `secret` - The secret key as a hexadecimal string.
+    ///
+    /// # Returns
+    ///
+    /// A JsValue containing an array of TSShare objects.
+    #[wasm_bindgen]
+    pub fn split_key(secret: &str) -> Result<JsValue, JsValue> {
+        // Parse the secret from a hex string into a BigUint.
+        let secret_biguint = BigUint::from_str_radix(secret, 16)
+            .map_err(|e| JsValue::from_str(&format!("Invalid secret hex string: {}", e)))?;
+        
+        let p = get_prime();
+        
+        // Use a fixed threshold and share_count of 4 (all shares required to reconstruct).
+        let shares = split_secret(&secret_biguint, 4, 4, &p)
+            .map_err(|e| JsValue::from_str(&e))?;
+        
+        // Convert each share into a TSShare with hexadecimal string representations.
+        let ts_shares: Vec<TSShare> = shares.into_iter().map(|s| {
+            TSShare {
+                x: s.x.to_str_radix(16),
+                y: s.y.to_str_radix(16),
+            }
+        }).collect();
+        
+        // Serialize the array of TSShare objects into a JsValue.
+        serde_wasm_bindgen::to_value(&ts_shares)
+            .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    }
+
+    /// Reconstructs a secret key from an array of TSShare objects.
+    ///
+    /// The shares must be provided as a JsValue representing an array where each element has
+    /// `x` and `y` fields (both hexadecimal strings). This function returns the reconstructed
+    /// secret as a hexadecimal string.
+    ///
+    /// # Arguments
+    ///
+    /// * `shares` - A JsValue representing an array of share objects.
+    ///
+    /// # Returns
+    ///
+    /// The reconstructed secret key as a hexadecimal string.
+    #[wasm_bindgen]
+    pub fn reconstruct_key(shares: &JsValue) -> Result<String, JsValue> {
+        // Deserialize the JsValue into a vector of TSShare objects.
+        let ts_shares: Vec<TSShare> = serde_wasm_bindgen::from_value(shares.clone())
+            .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
+        
+        // Convert each TSShare back into a Share (with BigUint fields).
+        let mut shares_converted = Vec::new();
+        for s in ts_shares {
+            let x = BigUint::from_str_radix(&s.x, 16)
+                .map_err(|e| JsValue::from_str(&format!("Invalid x coordinate: {}", e)))?;
+            let y = BigUint::from_str_radix(&s.y, 16)
+                .map_err(|e| JsValue::from_str(&format!("Invalid y coordinate: {}", e)))?;
+            shares_converted.push(Share { x, y });
+        }
+        
+        let p = get_prime();
+        let secret = reconstruct_secret(&shares_converted, &p);
+        Ok(secret.to_str_radix(16))
+    }
+}
+
+// Re-export the wasm_bindings module for use when compiling to wasm32.
+#[cfg(target_arch = "wasm32")]
+pub use wasm_bindings::*;
