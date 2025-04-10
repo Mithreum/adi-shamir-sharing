@@ -235,6 +235,57 @@ export function reconstruct_key(shares) {
     }
 }
 
+/**
+ * Splits a Solana key (a 128‑hex-character string) into two halves and secret‐shares each half.
+ * Returns a JsValue representing an object with two properties: `sol_part_1` and `sol_part_2`,
+ * each an array of TSShare objects.
+ *
+ * # Arguments
+ *
+ * * `secret` - A Solana private key represented as a 128‑hex-character string.
+ *
+ * # Errors
+ *
+ * Returns an error if the key is not exactly 128 hex characters.
+ * @param {string} secret
+ * @returns {any}
+ */
+export function split_solana_key(secret) {
+    const ptr0 = passStringToWasm0(secret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.split_solana_key(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Reconstructs a full Solana key from the shares of its two halves.
+ * It expects a JsValue representing an object with properties `sol_part_1` and `sol_part_2`, each being
+ * an array of TSShare objects. It returns the 128‑hex-character string corresponding to the combined key.
+ * @param {any} sol_parts
+ * @returns {string}
+ */
+export function reconstruct_solana_key(sol_parts) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ret = wasm.reconstruct_solana_key(sol_parts);
+        var ptr1 = ret[0];
+        var len1 = ret[1];
+        if (ret[3]) {
+            ptr1 = 0; len1 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred2_0 = ptr1;
+        deferred2_1 = len1;
+        return getStringFromWasm0(ptr1, len1);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
 async function __wbg_load(module, imports) {
     if (typeof Response === 'function' && module instanceof Response) {
         if (typeof WebAssembly.instantiateStreaming === 'function') {

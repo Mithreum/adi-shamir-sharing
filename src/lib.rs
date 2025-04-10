@@ -44,8 +44,8 @@
 //! - **Misconfiguration:** Incorrect parameters (e.g., secret larger than \( p \) or an invalid threshold)
 //!   can cause the scheme to fail or reduce security.
 
-use num_bigint::{BigUint, ToBigUint, RandBigInt};
-use num_traits::{One, Zero, Num};
+use num_bigint::{BigUint, RandBigInt, ToBigUint};
+use num_traits::{Num, One, Zero};
 use rand::thread_rng;
 
 /// Represents a single share in Shamir's Secret Sharing.
@@ -193,8 +193,8 @@ pub fn reconstruct_secret(shares: &[Share], p: &BigUint) -> BigUint {
 #[cfg(target_arch = "wasm32")]
 mod wasm_bindings {
     use super::*;
+    use serde::{Deserialize, Serialize};
     use wasm_bindgen::prelude::*;
-    use serde::{Serialize, Deserialize};
 
     /// A share structure for TypeScript binding.
     /// The x and y coordinates are represented as hexadecimal strings.
@@ -222,21 +222,21 @@ mod wasm_bindings {
         // Parse the secret from a hex string into a BigUint.
         let secret_biguint = BigUint::from_str_radix(secret, 16)
             .map_err(|e| JsValue::from_str(&format!("Invalid secret hex string: {}", e)))?;
-        
+
         let p = get_prime();
-        
+
         // Use a fixed threshold and share_count of 4 (all shares required to reconstruct).
-        let shares = split_secret(&secret_biguint, 4, 4, &p)
-            .map_err(|e| JsValue::from_str(&e))?;
-        
+        let shares = split_secret(&secret_biguint, 4, 4, &p).map_err(|e| JsValue::from_str(&e))?;
+
         // Convert each share into a TSShare with hexadecimal string representations.
-        let ts_shares: Vec<TSShare> = shares.into_iter().map(|s| {
-            TSShare {
+        let ts_shares: Vec<TSShare> = shares
+            .into_iter()
+            .map(|s| TSShare {
                 x: s.x.to_str_radix(16),
                 y: s.y.to_str_radix(16),
-            }
-        }).collect();
-        
+            })
+            .collect();
+
         // Serialize the array of TSShare objects into a JsValue.
         serde_wasm_bindgen::to_value(&ts_shares)
             .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
@@ -260,7 +260,7 @@ mod wasm_bindings {
         // Deserialize the JsValue into a vector of TSShare objects.
         let ts_shares: Vec<TSShare> = serde_wasm_bindgen::from_value(shares.clone())
             .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
-        
+
         // Convert each TSShare back into a Share (with BigUint fields).
         let mut shares_converted = Vec::new();
         for s in ts_shares {
@@ -270,10 +270,84 @@ mod wasm_bindings {
                 .map_err(|e| JsValue::from_str(&format!("Invalid y coordinate: {}", e)))?;
             shares_converted.push(Share { x, y });
         }
-        
+
         let p = get_prime();
         let secret = reconstruct_secret(&shares_converted, &p);
         Ok(secret.to_str_radix(16))
+    }
+
+    /// Splits a Solana key (a 128‑hex-character string) into two halves and secret‐shares each half.
+    /// Returns a JsValue representing an object with two properties: `sol_part_1` and `sol_part_2`,
+    /// each an array of TSShare objects.
+    ///
+    /// # Arguments
+    ///
+    /// * `secret` - A Solana private key represented as a 128‑hex-character string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the key is not exactly 128 hex characters.
+    #[wasm_bindgen]
+    pub fn split_solana_key(secret: &str) -> Result<JsValue, JsValue> {
+        // Ensure the secret is exactly 128 hex characters (i.e. 512 bits)
+        if secret.len() != 128 {
+            return Err(JsValue::from_str(
+                "Solana key must be exactly 128 hex characters.",
+            ));
+        }
+        // Divide the key into two 64-character (256-bit) halves.
+        let part1 = &secret[0..64];
+        let part2 = &secret[64..128];
+
+        // Use the existing `split_key` function to split each half.
+        let part1_shares_js = split_key(part1)?;
+        let part2_shares_js = split_key(part2)?;
+
+        // Convert the JsValue into Vec<TSShare>
+        let part1_shares: Vec<TSShare> = serde_wasm_bindgen::from_value(part1_shares_js)
+            .map_err(|e| JsValue::from_str(&format!("Deserialization error (part1): {}", e)))?;
+        let part2_shares: Vec<TSShare> = serde_wasm_bindgen::from_value(part2_shares_js)
+            .map_err(|e| JsValue::from_str(&format!("Deserialization error (part2): {}", e)))?;
+
+        // Define a struct to hold both halves
+        #[derive(Serialize)]
+        struct SolanaSplit {
+            sol_part_1: Vec<TSShare>,
+            sol_part_2: Vec<TSShare>,
+        }
+        let result = SolanaSplit {
+            sol_part_1: part1_shares,
+            sol_part_2: part2_shares,
+        };
+
+        serde_wasm_bindgen::to_value(&result)
+            .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    }
+
+    /// Reconstructs a full Solana key from the shares of its two halves.
+    /// It expects a JsValue representing an object with properties `sol_part_1` and `sol_part_2`, each being
+    /// an array of TSShare objects. It returns the 128‑hex-character string corresponding to the combined key.
+    #[wasm_bindgen]
+    pub fn reconstruct_solana_key(sol_parts: &JsValue) -> Result<String, JsValue> {
+        // Define a struct matching the expected input.
+        #[derive(Deserialize)]
+        struct SolanaSplit {
+            sol_part_1: Vec<TSShare>,
+            sol_part_2: Vec<TSShare>,
+        }
+        let split: SolanaSplit = serde_wasm_bindgen::from_value(sol_parts.clone())
+            .map_err(|e| JsValue::from_str(&format!("Deserialization error: {}", e)))?;
+
+        // Reconstruct each half using the existing function.
+        let part1 = reconstruct_key(&serde_wasm_bindgen::to_value(&split.sol_part_1)?)?;
+        let part2 = reconstruct_key(&serde_wasm_bindgen::to_value(&split.sol_part_2)?)?;
+
+        // Format each part to ensure it's exactly 64 hex characters (pad with leading zeros if needed)
+        let part1_formatted = format!("{:0>64}", part1);
+        let part2_formatted = format!("{:0>64}", part2);
+
+        // Concatenate the two parts to obtain the full Solana key.
+        Ok(format!("{}{}", part1_formatted, part2_formatted))
     }
 }
 

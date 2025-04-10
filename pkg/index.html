@@ -10,7 +10,7 @@
     <h1>Check the Console for Output</h1>
     <script type="module">
         // Usage Example:
-        import init, { split_key, reconstruct_key } from "./adi_shamir_sharing.js";
+        import init, { split_key, reconstruct_key, split_solana_key, reconstruct_solana_key } from "./adi_shamir_sharing.js";
 
         async function run() {
             // Initialize the WebAssembly module. This loads the .wasm file.
@@ -18,6 +18,7 @@
 
             // Example secret as a hexadecimal string (this must be less than the prime modulus).
             const evmSecret = "4c0883a69102937d6231471b5dbb6204fe512961708279e6ae5d47ee21b7e1cd";
+            console.log("EVM SK length:", evmSecret.length);
             // Split the secret into 4 shares.
             const evmShares = split_key(evmSecret);
             console.log("Generated shares:", evmShares);
@@ -26,13 +27,15 @@
             const evmReconstructed = reconstruct_key(evmShares);
             console.log("Reconstructed evmSecret:", evmReconstructed, "evmSecret matches:", evmReconstructed === evmSecret);
 
-            const solSecret = "3f9d86dc77a19a6f7a1ee2dc19f7528409929a1c8ee0f0b9807c3af87bf98e3d";
+            const solSecret = "d929e1d90607bcc484425d1ccd563c535be862e45f149021594e5574c4239bd9770320999975cc0c2bb4aac85efd7305f4901bf0df2be8ce8e326e2787d04007";
+
+            console.log("Sol SK length:", solSecret.length);
 
             // Split the secret into 4 shares.
-            const solShares = split_key(solSecret);
+            const solShares = split_solana_key(solSecret);
             console.log("Generated shares:", solShares);
 
-            const solReconstructed = reconstruct_key(solShares);
+            const solReconstructed = reconstruct_solana_key(solShares);
             console.log("Reconstructed solSecret:", solReconstructed, "solSecret matches:", solReconstructed === solSecret);
 
         }

@@ -32,6 +32,26 @@ export function split_key(secret: string): any;
  * The reconstructed secret key as a hexadecimal string.
  */
 export function reconstruct_key(shares: any): string;
+/**
+ * Splits a Solana key (a 128‑hex-character string) into two halves and secret‐shares each half.
+ * Returns a JsValue representing an object with two properties: `sol_part_1` and `sol_part_2`,
+ * each an array of TSShare objects.
+ *
+ * # Arguments
+ *
+ * * `secret` - A Solana private key represented as a 128‑hex-character string.
+ *
+ * # Errors
+ *
+ * Returns an error if the key is not exactly 128 hex characters.
+ */
+export function split_solana_key(secret: string): any;
+/**
+ * Reconstructs a full Solana key from the shares of its two halves.
+ * It expects a JsValue representing an object with properties `sol_part_1` and `sol_part_2`, each being
+ * an array of TSShare objects. It returns the 128‑hex-character string corresponding to the combined key.
+ */
+export function reconstruct_solana_key(sol_parts: any): string;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -39,6 +59,8 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly split_key: (a: number, b: number) => [number, number, number];
   readonly reconstruct_key: (a: any) => [number, number, number, number];
+  readonly split_solana_key: (a: number, b: number) => [number, number, number];
+  readonly reconstruct_solana_key: (a: any) => [number, number, number, number];
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_exn_store: (a: number) => void;
